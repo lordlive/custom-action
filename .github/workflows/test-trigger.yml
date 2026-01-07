@@ -10,6 +10,7 @@ on:
   #   types: [opened, edited]
     branches:
       - "main"
+  workflow_dispatch:
 
 permissions:
   contents: read
