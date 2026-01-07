@@ -1,0 +1,100 @@
+name: Simple Deployment Target
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_version:
+        description: The version to be used for the deployment
+        required: false
+        default: ''
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Simple Deployment
+    runs-on: linux-nonprod
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Display deployment information
+        run: |
+          echo "=========================================="
+          echo "Simple Deployment Target Workflow"
+          echo "=========================================="
+          echo "Triggered at: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "Workflow ref: ${{ github.ref }}"
+          echo "Workflow ref name: ${{ github.ref_name }}"
+          echo "Build version: ${{ inputs.build_version }}"
+          echo "Triggered by: ${{ github.actor }}"
+          echo "Event name: ${{ github.event_name }}"
+          echo "=========================================="
+          
+      - name: Validate build version input
+        run: |
+          BUILD_VERSION="${{ inputs.build_version }}"
+          
+          if [ -z "$BUILD_VERSION" ]; then
+            echo "ℹ️ No build version provided (using default empty string)"
+            echo "This is acceptable as build_version is optional"
+          else
+            echo "✅ Build version provided: $BUILD_VERSION"
+            
+            # Validate version format (basic check)
+            if [[ "$BUILD_VERSION" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9._-]+)?$ ]]; then
+              echo "✅ Build version format is valid"
+            else
+              echo "⚠️ Warning: Build version format may not be standard semver: $BUILD_VERSION"
+            fi
+          fi
+          
+      - name: Simulate deployment process
+        run: |
+          echo "Starting simulated deployment..."
+          sleep 2
+          echo "✅ Deployment simulation completed successfully"
+          
+      - name: Create deployment artifact
+        shell: bash
+        run: |
+          mkdir -p deployment-output
+          cat > deployment-output/deployment-info.json <<EOF
+          {
+            "status": "success",
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "build_version": "${{ inputs.build_version }}",
+            "ref": "${{ github.ref }}",
+            "ref_name": "${{ github.ref_name }}",
+            "sha": "${{ github.sha }}",
+            "actor": "${{ github.actor }}",
+            "run_id": "${{ github.run_id }}",
+            "run_number": "${{ github.run_number }}"
+          }
+          EOF
+          
+          echo "Deployment artifact created:"
+          cat deployment-output/deployment-info.json
+          
+      - name: Upload deployment artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-info-${{ github.run_id }}
+          path: deployment-output/
+          retention-days: 7
+
+  post-deploy:
+    name: Post-Deployment Validation
+    runs-on: linux-nonprod
+    needs: deploy
+    steps:
+      - name: Post-deployment checks
+        run: |
+          echo "=========================================="
+          echo "Post-Deployment Validation"
+          echo "=========================================="
+          echo "Deployment completed successfully"
+          echo "Build version used: ${{ inputs.build_version }}"
+          echo "All post-deployment checks passed ✅"

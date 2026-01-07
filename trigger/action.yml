@@ -1,0 +1,34 @@
+name: Trigger Action
+description: This action triggered by a specific event.
+inputs:
+  workflow-ref:
+    description: The reference of the workflow to trigger (tag or branch).
+    requred: true
+  workflow-path:
+    description: The path to the execute workflow file.
+    requred: true
+  build-version:
+    description: The version to ve used.
+    requred: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Validate workflow file path
+      shell: bash
+      run: |
+        WORKFLOW-PATH="${{ inputs.workflow-path }}"
+        if [ ! -f "$WORKFLOW-PATH" ]; then
+          echo "Error Workflow file not found: $WORKFLOW-PATH"
+          exit 1
+        fi
+        echo "Workflow file found: $WORKFLOW-PATH"
+
+    - name: Trigger the workflow
+      id: trigger_workflow
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        gh workflow run ${{ inputs.workflow-path }} --ref ${{ inputs.workflow-ref }} -f build_version="{{ inputs.build_version }}"

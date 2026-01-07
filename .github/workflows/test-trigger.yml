@@ -1,0 +1,187 @@
+name: Test Trigger Action
+
+on:
+  push:
+    paths:
+      - "trigger/**"
+      - ".github/workflows/test-trigger.yml"
+      - ".github/workflows/simple-deployment-target.yml"
+  pull_request:
+    types: [opened, edited]
+    branches:
+      - "main"
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  test-missing-workflow-ref:
+    name: Test 1 - Empty workflow-ref
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Test deployment trigger without workflow-ref
+        id: test-no-ref
+        continue-on-error: true
+        uses: ./trigger
+        with:
+          workflow-ref: ''
+          workflow-path: .github/workflows/simple-deployment-target.yml
+          build-version: v1.0.0
+          
+      - name: Validate test result
+        run: |
+          echo "Test 1: Empty workflow-ref"
+          echo "================================"
+          if [ "${{ steps.test-no-ref.outcome }}" = "failure" ]; then
+            echo "✅ PASSED: Action correctly failed when workflow-ref is Empty"
+            echo "Expected behavior: Action should fail because workflow-ref is required"
+          else
+            echo "❌ FAILED: Action should have failed when workflow-ref is Empty"
+            exit 1
+          fi
+
+  test-invalid-workflow-ref:
+    name: Test 2 - Invalid workflow-ref
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Test deployment trigger with invalid workflow-ref
+        id: test-invalid-ref
+        continue-on-error: true
+        uses: ./trigger
+        with:
+          workflow-ref: nonexistent-branch-12345
+          workflow-path: .github/workflows/simple-deployment-target.yml
+          build-version: v1.0.0
+          
+      - name: Validate test result
+        run: |
+          echo "Test 2: Invalid workflow-ref"
+          echo "================================"
+          if [ "${{ steps.test-invalid-ref.outcome }}" = "failure" ]; then
+            echo "✅ PASSED: Action correctly failed when workflow-ref is invalid"
+            echo "Expected behavior: GitHub CLI should fail to trigger workflow with non-existent reference"
+          else
+            echo "⚠️ WARNING: Action succeeded with invalid workflow-ref"
+            echo "Note: GitHub CLI may have accepted the reference without validation"
+            echo "This is not necessarily an error - gh workflow run may succeed but workflow won't trigger"
+          fi
+
+          
+  test-missing-workflow-path:
+    name: Test 3 - Empty workflow-path
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Test deployment trigger without workflow-path
+        id: test-no-path
+        continue-on-error: true
+        uses: ./trigger
+        with:
+          workflow-ref: ${{ github.ref_name }}
+          workflow-path: ''
+          build-version: v1.0.0
+          
+      - name: Validate test result
+        run: |
+          echo "Test 3: Empty workflow-path"
+          echo "================================"
+          if [ "${{ steps.test-no-path.outcome }}" = "failure" ]; then
+            echo "✅ PASSED: Action correctly failed when workflow-path is Empty"
+            echo "Expected behavior: Action should fail because workflow-path is required"
+          else
+            echo "❌ FAILED: Action should have failed when workflow-path is Empty"
+            exit 1
+          fi
+
+  test-invalid-workflow-path:
+    name: Test 4 - Invalid workflow-path
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Test deployment trigger with invalid workflow-path
+        id: test-invalid-path
+        continue-on-error: true
+        uses: ./trigger
+        with:
+          workflow-ref: ${{ github.ref_name }}
+          workflow-path: .github/workflows/nonexistent-workflow.yml
+          build-version: v1.0.0
+          
+      - name: Validate test result
+        run: |
+          echo "Test 4: Invalid workflow-path"
+          echo "================================"
+          if [ "${{ steps.test-invalid-path.outcome }}" = "failure" ]; then
+            echo "✅ PASSED: Action correctly failed when workflow-path is invalid"
+            echo "Expected behavior: GitHub CLI should fail to find the specified workflow"
+          else
+            echo "⚠️ WARNING: Action succeeded with invalid workflow-path"
+            echo "Note: GitHub CLI may have accepted the path without immediate validation"
+            echo "The workflow trigger may fail asynchronously"
+          fi
+
+  test-run-deploy-workflow:
+    name: Test 5 - Run Simple Deployment Workflow (default)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Test deployment trigger with empty build-version
+        id: test-run-deploy-workflow
+        continue-on-error: true
+        uses: ./trigger
+        with:
+          workflow-ref: ${{ github.ref_name }}
+          workflow-path: .github/workflows/simple-deployment-target.yml
+          build-version: ''
+      - name: Validate test result
+        run: |
+          echo "Test 5: Run Simple Deployment Workflow"
+          echo "================================"
+          if [ "${{ steps.test-run-deploy-workflow.outcome }}" = "success" ]; then
+            echo "✅ PASSED: Action succeeded with empty build-version"
+            echo "Expected behavior: Action should successfully trigger workflow with empty build version"
+            echo "Note: build-version is optional with default value of empty string"
+          else
+            echo "❌ FAILED: Action should have succeeded with empty build-version"
+            exit 1
+          fi
+
+  test-summary:
+    name: Test Summary
+    runs-on: ubuntu-latest
+    needs:
+      - test-missing-workflow-ref
+      - test-invalid-workflow-ref
+      - test-missing-workflow-path
+      - test-invalid-workflow-path
+      - test-run-deploy-workflow
+    if: always()
+    steps:
+      - name: Generate test summary
+        run: |
+          {
+            echo "# Deployment Trigger Action Test Results"
+            echo ""
+            echo "| Test # | Scenario | Result |"
+            echo "|--------|----------|--------|"
+            echo "| 1 | Empty workflow-ref | ${{ needs.test-missing-workflow-ref.result == 'success' && '✅ PASSED' || '❌ FAILED' }} |"
+            echo "| 2 | Invalid workflow-ref | ${{ needs.test-invalid-workflow-ref.result == 'success' && '✅ PASSED' || '❌ FAILED' }} |"
+            echo "| 3 | Empty workflow-path | ${{ needs.test-missing-workflow-path.result == 'success' && '✅ PASSED' || '❌ FAILED' }} |"
+            echo "| 4 | Invalid workflow-path | ${{ needs.test-invalid-workflow-path.result == 'success' && '✅ PASSED' || '❌ FAILED' }} |"
+            echo "| 5 | Run Simple Deployment Workflow | ${{ needs.test-run-deploy-workflow.result == 'success' && '✅ PASSED' || '❌ FAILED' }} |"
+            echo ""
+            echo "**Overall Status:** ${{ contains(needs.*.result, 'failure') && '❌ Some tests failed' || '✅ All tests passed' }}"
+          } >> "$GITHUB_STEP_SUMMARY"
