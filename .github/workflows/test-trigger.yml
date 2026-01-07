@@ -146,7 +146,6 @@ jobs:
         with:
           workflow-ref: ${{ github.ref_name }}
           workflow-path: .github/workflows/simple-deployment-target.yml
-          build-version: ''
       - name: Validate test result
         run: |
           echo "Test 5: Run Simple Deployment Workflow"

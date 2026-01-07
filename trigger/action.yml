@@ -8,9 +8,9 @@ inputs:
     description: The path to the execute workflow file.
     requred: true
   build-version:
-    description: The version to ve used.
+    description: The version to be used.
     requred: false
-    default: ""
+    default: " "
 
 runs:
   using: composite
