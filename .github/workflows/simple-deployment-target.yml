@@ -2,8 +2,9 @@ name: Simple Deployment Target
 
 on:
   workflow_dispatch:
+    
     inputs:
-      build_version:
+      build-version:
         description: The version to be used for the deployment
         required: false
         default: ''
