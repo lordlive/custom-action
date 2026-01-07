@@ -6,8 +6,8 @@ on:
       - "trigger/**"
       - ".github/workflows/test-trigger.yml"
       - ".github/workflows/simple-deployment-target.yml"
-  pull_request:
-    types: [opened, edited]
+  # pull_request:
+  #   types: [opened, edited]
     branches:
       - "main"
 
