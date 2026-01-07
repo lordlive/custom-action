@@ -15,15 +15,15 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Validate workflow file path
+    - name: Validate workflow file exists
       shell: bash
       run: |
-        WORKFLOW-PATH="${{ inputs.workflow-path }}"
-        if [ ! -f "$WORKFLOW-PATH" ]; then
-          echo "Error Workflow file not found: $WORKFLOW-PATH"
+        WORKFLOW_PATH="${{ inputs.workflow-path }}"
+        if [ ! -f "$WORKFLOW_PATH" ]; then
+          echo "❌ Error: Workflow file does not exist: $WORKFLOW_PATH"
           exit 1
         fi
-        echo "Workflow file found: $WORKFLOW-PATH"
+        echo "✅ Workflow file exists: $WORKFLOW_PATH"
 
     - name: Trigger the workflow
       id: trigger_workflow
