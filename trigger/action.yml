@@ -3,13 +3,13 @@ description: This action triggered by a specific event.
 inputs:
   workflow-ref:
     description: The reference of the workflow to trigger (tag or branch).
-    requred: true
+    required: true
   workflow-path:
     description: The path to the execute workflow file.
-    requred: true
+    required: true
   build-version:
     description: The version to be used.
-    requred: false
+    required: false
     default: ''
 
 runs:
