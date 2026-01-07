@@ -8,8 +8,8 @@ on:
       - ".github/workflows/simple-deployment-target.yml"
   # pull_request:
   #   types: [opened, edited]
-    branches:
-      - "main"
+    # branches:
+    #   - "main"
   workflow_dispatch:
 
 permissions:
