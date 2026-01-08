@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   test-missing-workflow-ref:
-    name: Test 1 - Missing workflow-ref
+    name: Test 1 - Default workflow-ref
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -34,13 +34,13 @@ jobs:
           
       - name: Validate test result
         run: |
-          echo "Test 1: Empty workflow-ref"
+          echo "Test 1: Default workflow-ref"
           echo "================================"
-          if [ "${{ steps.test-no-ref.outcome }}" = "failure" ]; then
-            echo "✅ PASSED: Action correctly failed when workflow-ref is Empty"
-            echo "Expected behavior: Action should fail because workflow-ref is required"
+          if [ "${{ steps.test-no-ref.outcome }}" = "success" ]; then
+            echo "✅ PASSED: Action correctly succeeded when workflow-ref is Empty (use default)"
+            echo "Expected behavior: Action should use the default workflow-ref (github.ref_name)"
           else
-            echo "❌ FAILED: Action should have failed when workflow-ref is Empty"
+            echo "❌ FAILED: Action should have succeeded with workflow-ref is Empty"
             exit 1
           fi
 

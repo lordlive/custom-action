@@ -21,10 +21,12 @@ This action requires the `GITHUB_TOKEN` environment variable to trigger workflow
 ## Permissions Required
 
 The action requires the following minimal permissions:
+
 - `actions: write` - To trigger workflow runs
 - `contents: read` - To access repository workflow files
 
 ## Example Usage
+
 ```yaml
 jobs:
   trigger-deploy:
@@ -33,13 +35,18 @@ jobs:
       actions: write   # Required to trigger workflows
       contents: read   # Required to access workflow files
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
         
       - name: Trigger production deployment
         uses: ./deployment-trigger
         with:
           workflow-ref: main
+          workflow-path: .github/workflows/production-deploy.yml
+          build-version: v1.2.3
+
+      # Alternative: Use default workflow-ref (cirent branch/tag)
+      - name: Trigger production deployment
+        uses: ./deployment-trigger
+        with:
           workflow-path: .github/workflows/production-deploy.yml
           build-version: v1.2.3
 ```
