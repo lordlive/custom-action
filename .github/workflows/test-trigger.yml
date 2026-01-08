@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   test-missing-workflow-ref:
-    name: Test 1 - Empty workflow-ref
+    name: Test 1 - Missing workflow-ref
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -29,7 +29,6 @@ jobs:
         continue-on-error: true
         uses: ./trigger
         with:
-          workflow-ref: ''
           workflow-path: .github/workflows/simple-deployment-target.yml
           build-version: v1.0.0
           
