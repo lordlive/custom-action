@@ -13,10 +13,16 @@ inputs:
     required: false
     default: ''
 
+outputs:
+  workflow-run-url:
+    description: The URL of the triggered workflowrun.
+    value: ${{ steps.trigger-workflow.outputs.workflow-run-url }}
+
 runs:
   using: composite
   steps:
     - name: Validate workflow file exists
+      id: trigger-workflow
       shell: bash
       run: |
         WORKFLOW_PATH="${{ inputs.workflow-path }}"
@@ -27,7 +33,6 @@ runs:
         echo "✅ Workflow file exists: $WORKFLOW_PATH"
 
     - name: Trigger the workflow
-      id: trigger_workflow
       shell: bash
       env:
         GH_TOKEN: ${{ github.token }}
@@ -36,8 +41,14 @@ runs:
 
         # Wait a moment for the workflow to be created
         sleep 3
-        
-        # Get the most recent workflow run
+
+      # Get the most recent workflow run  
+    - name: Get the most recent workflow run
+      
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
         WORKFLOW_FILE=$(basename ${{ inputs.workflow-path }})
         RUN_DATA=$(gh run list --workflow="$WORKFLOW_FILE" --limit 1 --json databaseId,url,status,createdAt,displayTitle)
         
