@@ -16,32 +16,35 @@ permissions:
   contents: read
   actions: write
 
+concurrency:  
+  group: ${{ github.workflow }}-${{ github.ref }}  
+  cancel-in-progress: true
+
 jobs:
   test-missing-workflow-ref:
-    name: Test 1 - Empty workflow-ref
+    name: Test 1 - Default workflow-ref
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Test deployment trigger without workflow-ref
         id: test-no-ref
         continue-on-error: true
         uses: ./trigger
         with:
-          workflow-ref: ''
           workflow-path: .github/workflows/simple-deployment-target.yml
           build-version: v1.0.0
           
       - name: Validate test result
         run: |
-          echo "Test 1: Empty workflow-ref"
+          echo "Test 1: Default workflow-ref"
           echo "================================"
-          if [ "${{ steps.test-no-ref.outcome }}" = "failure" ]; then
-            echo "✅ PASSED: Action correctly failed when workflow-ref is Empty"
-            echo "Expected behavior: Action should fail because workflow-ref is required"
+          if [ "${{ steps.test-no-ref.outcome }}" = "success" ]; then
+            echo "✅ PASSED: Action correctly succeeded when workflow-ref is Empty (use default)"
+            echo "Expected behavior: Action should use the default workflow-ref (github.ref_name)"
           else
-            echo "❌ FAILED: Action should have failed when workflow-ref is Empty"
+            echo "❌ FAILED: Action should have succeeded with workflow-ref is Empty"
             exit 1
           fi
 
@@ -50,7 +53,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Test deployment trigger with invalid workflow-ref
         id: test-invalid-ref
@@ -80,7 +83,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Test deployment trigger without workflow-path
         id: test-no-path
@@ -108,7 +111,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Test deployment trigger with invalid workflow-path
         id: test-invalid-path
@@ -137,7 +140,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Test deployment trigger with empty build-version
         id: test-run-deploy-workflow

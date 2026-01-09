@@ -13,13 +13,17 @@ on:
 permissions:
   contents: read
 
+concurrency:  
+  group: ${{ github.workflow }}-${{ github.ref }}  
+  cancel-in-progress: true
+
 jobs:
   deploy:
     name: Simple Deployment
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Display deployment information
         run: |
@@ -29,18 +33,18 @@ jobs:
           echo "Triggered at: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
           echo "Workflow ref: ${{ github.ref }}"
           echo "Workflow ref name: ${{ github.ref_name }}"
-          echo "Build version: ${{ inputs.build_version }}"
+          echo "Build version: ${{ inputs.build-version }}"
           echo "Triggered by: ${{ github.actor }}"
           echo "Event name: ${{ github.event_name }}"
           echo "=========================================="
           
       - name: Validate build version input
         run: |
-          BUILD_VERSION="${{ inputs.build_version }}"
+          BUILD_VERSION="${{ inputs.build-version }}"
           
           if [ -z "$BUILD_VERSION" ]; then
             echo "ℹ️ No build version provided (using default empty string)"
-            echo "This is acceptable as build_version is optional"
+            echo "This is acceptable as build-version is optional"
           else
             echo "✅ Build version provided: $BUILD_VERSION"
             
@@ -66,7 +70,7 @@ jobs:
           {
             "status": "success",
             "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-            "build_version": "${{ inputs.build_version }}",
+            "build_version": "${{ inputs.build-version }}",
             "ref": "${{ github.ref }}",
             "ref_name": "${{ github.ref_name }}",
             "sha": "${{ github.sha }}",
@@ -97,5 +101,5 @@ jobs:
           echo "Post-Deployment Validation"
           echo "=========================================="
           echo "Deployment completed successfully"
-          echo "Build version used: ${{ inputs.build_version }}"
+          echo "Build version used: ${{ inputs.build-version }}"
           echo "All post-deployment checks passed ✅"

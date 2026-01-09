@@ -3,7 +3,8 @@ description: This action triggered by a specific event.
 inputs:
   workflow-ref:
     description: The reference of the workflow to trigger (tag or branch).
-    required: true
+    required: false
+    default: ${{ github.ref_name }}
   workflow-path:
     description: The path to the execute workflow file.
     required: true
@@ -32,3 +33,57 @@ runs:
         GH_TOKEN: ${{ github.token }}
       run: |
         gh workflow run ${{ inputs.workflow-path }} --ref ${{ inputs.workflow-ref }} --field build-version=${{ inputs.build-version }}
+
+        # Wait a moment for the workflow to be created
+        sleep 3
+        
+        # Get the most recent workflow run
+        WORKFLOW_FILE=$(basename ${{ inputs.workflow-path }})
+        RUN_DATA=$(gh run list --workflow="$WORKFLOW_FILE" --limit 1 --json databaseId,url,status,createdAt,displayTitle)
+        
+        if [ -n "$RUN_DATA" ]; then
+          RUN_URL=$(echo "$RUN_DATA" | jq -r '.[0].url')
+          RUN_ID=$(echo "$RUN_DATA" | jq -r '.[0].databaseId')
+          RUN_STATUS=$(echo "$RUN_DATA" | jq -r '.[0].status')
+          RUN_TITLE=$(echo "$RUN_DATA" | jq -r '.[0].displayTitle')
+          
+          echo "✅ Workflow triggered successfully"
+          echo "Run ID: $RUN_ID"
+          echo "Run URL: $RUN_URL"
+          
+          # Set output
+          echo "workflow-run-url=$RUN_URL" >> "$GITHUB_OUTPUT"
+          
+          # Create job summary
+          {
+            echo "## Deployment Workflow Triggered"
+            echo ""
+            echo "| Property | Value |"
+            echo "|----------|-------|"
+            echo "| **Workflow** | \`$WORKFLOW_FILE\` |"
+            echo "| **Reference** | \`${{ inputs.workflow-ref }}\` |"
+            echo "| **Run ID** | [\`$RUN_ID\`]($RUN_URL) |"
+            echo "| **Status** | \`$RUN_STATUS\` |"
+            echo "| **Title** | $RUN_TITLE |"
+            echo ""
+            echo "### Quick Links"
+            echo "- [View Workflow Run]($RUN_URL)"
+            echo "- [View All Runs](https://github.com/${{ github.repository }}/actions/workflows/$WORKFLOW_FILE)"
+          } >> "$GITHUB_STEP_SUMMARY"
+        else
+          echo "Workflow triggered but run details could not be retrieved"
+          
+          # Set empty output
+          echo "workflow-run-url=" >> "$GITHUB_OUTPUT"
+          
+          {
+            echo "## Deployment Workflow Triggered"
+            echo ""
+            echo "| Property | Value |"
+            echo "|----------|-------|"
+            echo "| **Workflow** | \`$WORKFLOW_FILE\` |"
+            echo "| **Reference** | \`${{ inputs.workflow-ref }}\` |"
+            echo ""
+            echo "Workflow triggered successfully, but run details could not be retrieved immediately."
+          } >> "$GITHUB_STEP_SUMMARY"
+        fi
