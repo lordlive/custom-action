@@ -17,84 +17,151 @@ outputs:
   workflow-run-url:
     description: The URL of the triggered workflowrun.
     value: ${{ steps.trigger-workflow.outputs.workflow-run-url }}
+  workflow-run-id:
+    description: The ID of the triggered workflow run.
+    value: ${{ steps.trigger-workflow.outputs.workflow-run-id }}
 
 runs:
   using: composite
   steps:
     - name: Validate workflow file exists
-      id: trigger-workflow
       shell: bash
       run: |
         WORKFLOW_PATH="${{ inputs.workflow-path }}"
         if [ ! -f "$WORKFLOW_PATH" ]; then
-          echo "❌ Error: Workflow file does not exist: $WORKFLOW_PATH"
+          echo "::error::Workflow file does not exist: $WORKFLOW_PATH"
           exit 1
         fi
         echo "✅ Workflow file exists: $WORKFLOW_PATH"
-
-    - name: Trigger the workflow
-      shell: bash
-      env:
-        GH_TOKEN: ${{ github.token }}
-      run: |
-        gh workflow run ${{ inputs.workflow-path }} --ref ${{ inputs.workflow-ref }} --field build-version=${{ inputs.build-version }}
-
-        # Wait a moment for the workflow to be created
-        sleep 3
-
-      # Get the most recent workflow run  
-    - name: Get the most recent workflow run
-      
-      shell: bash
-      env:
-        GH_TOKEN: ${{ github.token }}
-      run: |
-        WORKFLOW_FILE=$(basename ${{ inputs.workflow-path }})
-        RUN_DATA=$(gh run list --workflow="$WORKFLOW_FILE" --limit 1 --json databaseId,url,status,createdAt,displayTitle)
-        
-        if [ -n "$RUN_DATA" ]; then
-          RUN_URL=$(echo "$RUN_DATA" | jq -r '.[0].url')
-          RUN_ID=$(echo "$RUN_DATA" | jq -r '.[0].databaseId')
-          RUN_STATUS=$(echo "$RUN_DATA" | jq -r '.[0].status')
-          RUN_TITLE=$(echo "$RUN_DATA" | jq -r '.[0].displayTitle')
+    
+    - name: Trigger workflow
+      id: trigger-workflow
+      uses: actions/github-script@v7
+      with:
+        github-token: ${{ github.token }}
+        script: |
+          const path = require('path');
+          const fs = require('fs');
           
-          echo "✅ Workflow triggered successfully"
-          echo "Run ID: $RUN_ID"
-          echo "Run URL: $RUN_URL"
+          const workflowPath = '${{ inputs.workflow-path }}';
+          const workflowRef = '${{ inputs.workflow-ref }}';
+          const workflowFile = path.basename(workflowPath);
           
-          # Set output
-          echo "workflow-run-url=$RUN_URL" >> "$GITHUB_OUTPUT"
+          console.log('🚀 Triggering workflow...');
+          console.log(`Workflow: ${workflowFile}`);
+          console.log(`Reference: ${workflowRef}`);
           
-          # Create job summary
-          {
-            echo "## Deployment Workflow Triggered"
-            echo ""
-            echo "| Property | Value |"
-            echo "|----------|-------|"
-            echo "| **Workflow** | \`$WORKFLOW_FILE\` |"
-            echo "| **Reference** | \`${{ inputs.workflow-ref }}\` |"
-            echo "| **Run ID** | [\`$RUN_ID\`]($RUN_URL) |"
-            echo "| **Status** | \`$RUN_STATUS\` |"
-            echo "| **Title** | $RUN_TITLE |"
-            echo ""
-            echo "### Quick Links"
-            echo "- [View Workflow Run]($RUN_URL)"
-            echo "- [View All Runs](https://github.com/${{ github.repository }}/actions/workflows/$WORKFLOW_FILE)"
-          } >> "$GITHUB_STEP_SUMMARY"
-        else
-          echo "Workflow triggered but run details could not be retrieved"
+          // Trigger the workflow
+          try {
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: workflowFile,
+              ref: workflowRef
+            });
+            
+            console.log('✅ Workflow dispatch request sent successfully');
+          } catch (error) {
+            core.setFailed(`Failed to trigger workflow: ${error.message}`);
+            return;
+          }
           
-          # Set empty output
-          echo "workflow-run-url=" >> "$GITHUB_OUTPUT"
+          // Wait for workflow to be created
+          await new Promise(resolve => setTimeout(resolve, 3000));
           
-          {
-            echo "## Deployment Workflow Triggered"
-            echo ""
-            echo "| Property | Value |"
-            echo "|----------|-------|"
-            echo "| **Workflow** | \`$WORKFLOW_FILE\` |"
-            echo "| **Reference** | \`${{ inputs.workflow-ref }}\` |"
-            echo ""
-            echo "Workflow triggered successfully, but run details could not be retrieved immediately."
-          } >> "$GITHUB_STEP_SUMMARY"
-        fi
+          // Find the most recent workflow run
+          async function findWorkflowRun(retries = 0) {
+            const maxRetries = 5;
+            const retryDelay = 2000;
+            
+            try {
+              console.log(`Searching for workflow run (attempt ${retries + 1}/${maxRetries + 1})...`);
+              
+              const runsResponse = await github.rest.actions.listWorkflowRuns({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: workflowFile,
+                per_page: 5
+              });
+              
+              if (runsResponse.data.workflow_runs.length > 0) {
+                const run = runsResponse.data.workflow_runs[0];
+                return {
+                  found: true,
+                  id: run.id,
+                  url: run.html_url,
+                  status: run.status,
+                  displayTitle: run.display_title
+                };
+              }
+              
+              if (retries < maxRetries) {
+                console.log(`Run not found yet, retrying in ${retryDelay/1000} seconds...`);
+                await new Promise(resolve => setTimeout(resolve, retryDelay));
+                return await findWorkflowRun(retries + 1);
+              }
+              
+              return { found: false };
+              
+            } catch (error) {
+              console.error(`Error searching for workflow run: ${error.message}`);
+              if (retries < maxRetries) {
+                await new Promise(resolve => setTimeout(resolve, retryDelay));
+                return await findWorkflowRun(retries + 1);
+              }
+              return { found: false };
+            }
+          }
+          
+          const result = await findWorkflowRun();
+          
+          if (result.found) {
+            console.log('✅ Workflow triggered successfully');
+            console.log(`Run ID: ${result.id}`);
+            console.log(`Run URL: ${result.url}`);
+            
+            // Set outputs
+            core.setOutput('workflow-run-url', result.url);
+            core.setOutput('workflow-run-id', result.id);
+            
+            // Create job summary
+            await core.summary
+              .addHeading(`Workflow ${workflowFile} Triggered`, 2)
+              .addTable([
+                [
+                  { data: 'Property', header: true },
+                  { data: 'Value', header: true }
+                ],
+                ['**Workflow**', `\`${workflowFile}\``],
+                ['**Reference**', `\`${workflowRef}\``],
+                ['**Run ID**', `\`${result.id}\``],
+                ['**Run URL**', `[Workflow run](${result.url})`],
+                ['**Status**', `\`${result.status}\``]
+              ])
+              .addHeading('Quick Links', 3)
+              .addList([
+                `[View Workflow Run](${result.url})`,
+                `[View All Runs](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/workflows/${workflowFile})`
+              ])
+              .write();
+          } else {
+            console.log('⚠️ Workflow triggered but run details could not be retrieved');
+            
+            // Set empty outputs
+            core.setOutput('workflow-run-url', '');
+            core.setOutput('workflow-run-id', '');
+            
+            // Create job summary
+            await core.summary
+              .addHeading('Deployment Workflow Triggered', 2)
+              .addTable([
+                [
+                  { data: 'Property', header: true },
+                  { data: 'Value', header: true }
+                ],
+                ['**Workflow**', `\`${workflowFile}\``],
+                ['**Reference**', `\`${workflowRef}\``]
+              ])
+              .addRaw('\n\nWorkflow triggered successfully, but run details could not be retrieved immediately.')
+              .write();
+          }
