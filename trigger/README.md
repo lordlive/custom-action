@@ -6,17 +6,21 @@ Triggers a deployment workflow using the GitHub CLI. This action initiates a wor
 
 | Name                 | Description                                                              | Required | Default |
 |----------------------|--------------------------------------------------------------------------|----------|---------|
-| `workflow-ref`       | The reference (tag or branch) to be used for the workflow run.           | Yes      | N/A     |
 | `workflow-path`      | The path to the production workflow file.                                | Yes      | N/A     |
+| `workflow-ref`       | The reference (tag or branch) to be used for the workflow run.           | No       | `${{ github.ref_name }}`     |
 | `build-version`      | The version to be used for the release.                                  | No       | `''` (empty string) |
 
 ## Outputs
 
-This action does not produce any outputs.
+| Name                 | Description                                                              |
+|----------------------|--------------------------------------------------------------------------|
+| `workflow-run-url`   | The URL of the triggered workflow run. Empty if run details cannot be retrieved. |
 
-## Environment Variables
+## Features
 
-This action requires the `GITHUB_TOKEN` environment variable to trigger workflows via the GitHub CLI.
+- **Automatic Summary**: Generates a job summary with workflow metadata, status, and clickable links
+- **Run Verification**: Retrieves and displays the triggered workflow run details
+- **Output URL**: Provides the workflow run URL for use in subsequent steps
 
 ## Permissions Required
 
