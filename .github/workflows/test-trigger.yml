@@ -137,7 +137,6 @@ jobs:
 
   test-run-deploy-workflow:
     name: Test 5 - Run Simple Deployment Workflow (default)
-    needs: test-missing-workflow-ref
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
