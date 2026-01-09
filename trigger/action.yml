@@ -135,7 +135,7 @@ runs:
                 ['**Workflow**', `\`${workflowFile}\``],
                 ['**Reference**', `\`${workflowRef}\``],
                 ['**Run ID**', `\`${result.id}\``],
-                ['**Run URL**', `[Workflow run](${result.url})`],
+                ['**Run URL**', `${result.url}`],
                 ['**Status**', `\`${result.status}\``]
               ])
               .addHeading('Quick Links', 3)
