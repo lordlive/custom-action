@@ -39,7 +39,9 @@ jobs:
       actions: write   # Required to trigger workflows
       contents: read   # Required to access workflow files
     steps:
-        
+      - name: Checkout code
+        uses: actions/checkout@v5
+
       - name: Trigger production deployment
         uses: ./deployment-trigger
         with:
