@@ -26,6 +26,53 @@ runs:
         fi
         echo "✅ Workflow file exists: $WORKFLOW_PATH"
 
+    - name: Check for running workflows
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        WORKFLOW_FILE=$(basename ${{ inputs.workflow-path }})
+        TARGET_REF="${{ inputs.workflow-ref }}"
+        
+        echo "Checking for running workflows..."
+        echo "Workflow: $WORKFLOW_FILE"
+        echo "Reference: $TARGET_REF"
+        
+        # Get running or queued workflows for this workflow file and reference
+        RUNNING_WORKFLOWS=$(gh run list \
+          --workflow="$WORKFLOW_FILE" \
+          --branch="$TARGET_REF" \
+          --status="in_progress" \
+          --json databaseId,status,displayTitle,createdAt \
+          --limit 10)
+        
+        QUEUED_WORKFLOWS=$(gh run list \
+          --workflow="$WORKFLOW_FILE" \
+          --branch="$TARGET_REF" \
+          --status="queued" \
+          --json databaseId,status,displayTitle,createdAt \
+          --limit 10)
+        
+        # Count running workflows
+        RUNNING_COUNT=$(echo "$RUNNING_WORKFLOWS" | jq 'length')
+        QUEUED_COUNT=$(echo "$QUEUED_WORKFLOWS" | jq 'length')
+        TOTAL_COUNT=$((RUNNING_COUNT + QUEUED_COUNT))
+        
+        if [ "$TOTAL_COUNT" -gt 0 ]; then
+          echo "::error::Found $TOTAL_COUNT active workflow(s) for $WORKFLOW_FILE on branch $TARGET_REF"
+          echo ""
+          echo "Running workflows ($RUNNING_COUNT):"
+          echo "$RUNNING_WORKFLOWS" | jq -r '.[] | "  - Run ID: \(.databaseId), Title: \(.displayTitle), Created: \(.createdAt)"'
+          echo ""
+          echo "Queued workflows ($QUEUED_COUNT):"
+          echo "$QUEUED_WORKFLOWS" | jq -r '.[] | "  - Run ID: \(.databaseId), Title: \(.displayTitle), Created: \(.createdAt)"'
+          echo ""
+          echo "::error::Cannot trigger workflow while another instance is running. Please wait for the current workflow to complete or cancel it manually."
+          exit 1
+        fi
+        
+        echo "✅ No active workflows found. Safe to trigger."
+
     - name: Trigger the workflow
       id: trigger_workflow
       shell: bash
