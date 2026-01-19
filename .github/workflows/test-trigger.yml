@@ -171,6 +171,7 @@ jobs:
           fi
 
       - name: Clean existing test tags
+        if: always()
         shell: bash
         run: |
           git fetch --tags
