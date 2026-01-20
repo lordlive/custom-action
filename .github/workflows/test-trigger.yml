@@ -137,6 +137,7 @@ jobs:
 
   test-run-deploy-workflow:
     name: Test 5 - Run Simple Deployment Workflow (default)
+    needs: test-missing-workflow-ref
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -171,7 +172,7 @@ jobs:
             echo "Expected behavior: Action should successfully trigger workflow for specified branch 'release/v1.2.3'"
             echo "Note: build-version is optional with default value of empty string"
           else
-            echo "❌ FAILED: The workflow was not triggered on the expected branch 'release/v1.2.4'"
+            echo "❌ FAILED: The workflow was not triggered on the expected branch 'release/v1.2.3'"
             exit 1
           fi
 
