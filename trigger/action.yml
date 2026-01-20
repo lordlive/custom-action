@@ -87,7 +87,7 @@ runs:
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
-        gh workflow run ${{ inputs.workflow-path }} --ref ${{ inputs.workflow-ref }} --field build-version=${{ inputs.build-version }}
+        gh workflow run ${{ inputs.workflow-path }} --ref main --field build-version=${{ inputs.build-version }}
 
         # Wait a moment for the workflow to be created
         sleep 3
