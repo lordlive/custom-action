@@ -157,16 +157,21 @@ jobs:
         with:
           workflow-ref: release/v1.2.3
           workflow-path: .github/workflows/simple-deployment-target.yml
+          build-version: v1.0.0
       - name: Validate test result
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           echo "Test 5: Run Simple Deployment Workflow"
           echo "================================"
-          if [ "${{ steps.test-run-deploy-workflow.outcome }}" = "success" ]; then
+          TARGET_BRANCH=$(gh run list --workflow=".github/workflows/simple-deployment-target.yml" --limit 1 --json headBranch | jq '.[] | .headBranch' | tr -d '"')
+          echo "Triggered workflow run branch: $TARGET_BRANCH"
+          if [ "$TARGET_BRANCH" = "release/v1.2.3" ]; then
             echo "✅ PASSED: Action succeeded with empty build-version"
-            echo "Expected behavior: Action should successfully trigger workflow with empty build version"
+            echo "Expected behavior: Action should successfully trigger workflow for specified branch 'release/v1.2.3'"
             echo "Note: build-version is optional with default value of empty string"
           else
-            echo "❌ FAILED: Action should have succeeded with empty build-version"
+            echo "❌ FAILED: The workflow was not triggered on the expected branch 'release/v1.2.4'"
             exit 1
           fi
 
